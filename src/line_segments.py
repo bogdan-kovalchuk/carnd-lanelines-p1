@@ -37,3 +37,40 @@ def split_line_segments(
             left.append(segment)
 
     return tuple(right), tuple(left)
+
+
+def split_line_segments_by_ratio(
+    segments: Iterable[Sequence[float]],
+    min_angle: float = 20.0,
+    max_angle: float = 80.0,
+) -> Tuple[Tuple[LineSegment, ...], Tuple[LineSegment, ...]]:
+    """Classify segments using vector ratios instead of inverse trigonometry.
+
+    The sign of ``dx * dy`` determines the lane side. Squared vector
+    components are compared with squared tangent bounds, avoiding an angle
+    calculation for each segment.
+    """
+
+    minimum_ratio_squared = math.tan(math.radians(min_angle)) ** 2
+    maximum_ratio_squared = math.tan(math.radians(max_angle)) ** 2
+    right = []
+    left = []
+
+    for raw_segment in segments:
+        x1, y1, x2, y2 = raw_segment
+        dx = x2 - x1
+        dy = y2 - y1
+        if dx == 0:
+            continue
+
+        ratio_squared = (dy * dy) / (dx * dx)
+        if not minimum_ratio_squared < ratio_squared < maximum_ratio_squared:
+            continue
+
+        segment = (x1, y1, x2, y2)
+        if dx * dy > 0:
+            right.append(segment)
+        elif dx * dy < 0:
+            left.append(segment)
+
+    return tuple(right), tuple(left)

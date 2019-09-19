@@ -3,7 +3,7 @@
 import math
 import unittest
 
-from src.line_segments import split_line_segments
+from src.line_segments import split_line_segments, split_line_segments_by_ratio
 
 
 class SplitLineSegmentsTests(unittest.TestCase):
@@ -42,6 +42,36 @@ class SplitLineSegmentsTests(unittest.TestCase):
 
         self.assertEqual(right, ())
         self.assertEqual(left, ())
+
+
+class RatioSplitLineSegmentsTests(unittest.TestCase):
+    def test_matches_angle_implementation_on_mixed_segments(self):
+        segments = [
+            (0, 0, 10, 10),
+            (0, 10, 10, 0),
+            (10, 10, 0, 0),
+            (10, 0, 0, 10),
+            (0, 0, 10, 2),
+            (4, 0, 4, 12),
+        ]
+
+        self.assertEqual(
+            split_line_segments_by_ratio(segments),
+            split_line_segments(segments),
+        )
+
+    def test_uses_vector_sign_independently_of_endpoint_order(self):
+        forward = [(0, 0, 4, 3), (0, 3, 4, 0)]
+        reversed_segments = [(4, 3, 0, 0), (4, 0, 0, 3)]
+
+        self.assertEqual(
+            split_line_segments_by_ratio(forward),
+            (((0, 0, 4, 3),), ((0, 3, 4, 0),)),
+        )
+        self.assertEqual(
+            split_line_segments_by_ratio(reversed_segments),
+            (((4, 3, 0, 0),), ((4, 0, 0, 3),)),
+        )
 
 
 if __name__ == "__main__":
