@@ -74,5 +74,48 @@ class RatioSplitLineSegmentsTests(unittest.TestCase):
         )
 
 
+class LineSegmentValidationTests(unittest.TestCase):
+    def test_rejects_invalid_segment_shapes_and_values(self):
+        invalid_inputs = [
+            [(1, 2, 3)],
+            [(1, 2, 3, 4, 5)],
+            [(1, 2, "3", 4)],
+            [(1, 2, math.inf, 4)],
+            [(1, 2, math.nan, 4)],
+            [None],
+        ]
+
+        for segments in invalid_inputs:
+            with self.subTest(segments=segments):
+                with self.assertRaises(ValueError):
+                    split_line_segments(segments)
+                with self.assertRaises(ValueError):
+                    split_line_segments_by_ratio(segments)
+
+    def test_rejects_invalid_angle_ranges(self):
+        invalid_ranges = [(-1, 80), (20, 20), (80, 20), (20, 91), (math.nan, 80)]
+
+        for bounds in invalid_ranges:
+            with self.subTest(bounds=bounds):
+                with self.assertRaises(ValueError):
+                    split_line_segments([], *bounds)
+                with self.assertRaises(ValueError):
+                    split_line_segments_by_ratio([], *bounds)
+
+    def test_ignores_zero_length_and_vertical_segments(self):
+        segments = [(2, 2, 2, 2), (5, -10, 5, 10)]
+
+        self.assertEqual(split_line_segments(segments), ((), ()))
+        self.assertEqual(split_line_segments_by_ratio(segments), ((), ()))
+
+    def test_accepts_single_pass_iterables(self):
+        segments = ((0, 0, 10, y) for y in (10, -10))
+
+        self.assertEqual(
+            split_line_segments_by_ratio(segments),
+            (((0.0, 0.0, 10.0, 10.0),), ((0.0, 0.0, 10.0, -10.0),)),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
