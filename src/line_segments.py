@@ -1,4 +1,11 @@
-"""Classify Hough line segments into left and right lane candidates."""
+"""Classify Hough line segments into left and right lane candidates.
+
+Two equivalent approaches are available. :func:`split_line_segments` computes
+an angle with ``atan`` and is the clearest expression of the notebook logic.
+:func:`split_line_segments_by_ratio` compares vector-component ratios and
+avoids inverse trigonometry inside the loop. Both take O(n) time for n input
+segments and O(n) result space in the worst case; validation is also O(n).
+"""
 
 from __future__ import annotations
 
@@ -68,6 +75,9 @@ def split_line_segments(
     right lane and negative slopes identify the left lane. Horizontal,
     vertical, and boundary-angle segments are ignored, matching the strict
     threshold comparisons in the notebook pipeline.
+
+    Complexity is O(n) time and O(n) output space. Prefer this implementation
+    when readability and direct angle semantics matter most.
     """
 
     _validate_angle_bounds(min_angle, max_angle)
@@ -94,9 +104,11 @@ def split_line_segments_by_ratio(
 ) -> Tuple[Tuple[LineSegment, ...], Tuple[LineSegment, ...]]:
     """Classify segments using vector ratios instead of inverse trigonometry.
 
-    The sign of ``dx * dy`` determines the lane side. Squared vector
-    components are compared with squared tangent bounds, avoiding an angle
-    calculation for each segment.
+    The sign of ``dx * dy`` determines the lane side. The component ratio is
+    compared with tangent bounds, avoiding an inverse-angle
+    calculation for each segment. Complexity is O(n) time and O(n) output
+    space. Prefer this implementation in a hot loop after profiling confirms
+    that trigonometric conversion is material.
     """
 
     _validate_angle_bounds(min_angle, max_angle)
