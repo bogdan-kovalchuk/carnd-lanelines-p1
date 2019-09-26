@@ -37,3 +37,41 @@ def average_extrapolated_segments(
     bottom_x = int(sum(bottom_x_values) / count)
     top_x = int(sum(top_x_values) / count)
     return (bottom_x, y_bottom, top_x, y_top)
+
+
+def fit_line_to_endpoints(
+    segments: Iterable[Sequence[float]],
+    y_bottom: float,
+    y_top: float,
+) -> Optional[LineSegment]:
+    """Fit ``x = slope * y + intercept`` to all segment endpoints.
+
+    Unlike segment-wise extrapolation, ordinary least squares gives more
+    influence to endpoints that cover a larger vertical range.
+    """
+
+    points = []
+    for segment in segments:
+        x1, y1, x2, y2 = segment
+        points.extend(((x1, y1), (x2, y2)))
+    if not points:
+        return None
+
+    mean_x = sum(point[0] for point in points) / len(points)
+    mean_y = sum(point[1] for point in points) / len(points)
+    denominator = sum((point[1] - mean_y) ** 2 for point in points)
+    if denominator == 0:
+        return None
+
+    numerator = sum(
+        (y - mean_y) * (x - mean_x)
+        for x, y in points
+    )
+    slope = numerator / denominator
+    intercept = mean_x - slope * mean_y
+    return (
+        int(slope * y_bottom + intercept),
+        y_bottom,
+        int(slope * y_top + intercept),
+        y_top,
+    )

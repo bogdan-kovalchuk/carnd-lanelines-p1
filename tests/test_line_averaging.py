@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.line_averaging import average_extrapolated_segments
+from src.line_averaging import average_extrapolated_segments, fit_line_to_endpoints
 
 
 class AverageExtrapolatedSegmentsTests(unittest.TestCase):
@@ -50,6 +50,29 @@ class AverageExtrapolatedSegmentsTests(unittest.TestCase):
         average_extrapolated_segments(segments, 10, 0)
 
         self.assertEqual(segments, original)
+
+
+class FitLineToEndpointsTests(unittest.TestCase):
+    def test_matches_segment_average_for_parallel_equal_span_lines(self):
+        segments = [(0, 0, 10, 10), (2, 0, 12, 10)]
+
+        self.assertEqual(
+            fit_line_to_endpoints(segments, 10, 0),
+            average_extrapolated_segments(segments, 10, 0),
+        )
+
+    def test_weights_segments_by_their_vertical_span(self):
+        segments = [(0, 0, 10, 10), (100, 4, 104, 6)]
+
+        fitted = fit_line_to_endpoints(segments, 10, 0)
+        averaged = average_extrapolated_segments(segments, 10, 0)
+
+        self.assertEqual(fitted, (58, 10, 48, 0))
+        self.assertEqual(averaged, (61, 10, 46, 0))
+
+    def test_returns_none_without_vertical_variation(self):
+        self.assertIsNone(fit_line_to_endpoints([], 10, 0))
+        self.assertIsNone(fit_line_to_endpoints([(0, 3, 5, 3)], 10, 0))
 
 
 if __name__ == "__main__":
