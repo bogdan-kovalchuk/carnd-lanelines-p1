@@ -1,5 +1,6 @@
 """Characterization tests for lane line averaging."""
 
+import math
 import unittest
 
 from src.line_averaging import average_extrapolated_segments, fit_line_to_endpoints
@@ -73,6 +74,49 @@ class FitLineToEndpointsTests(unittest.TestCase):
     def test_returns_none_without_vertical_variation(self):
         self.assertIsNone(fit_line_to_endpoints([], 10, 0))
         self.assertIsNone(fit_line_to_endpoints([(0, 3, 5, 3)], 10, 0))
+
+
+class LineAveragingValidationTests(unittest.TestCase):
+    FUNCTIONS = (average_extrapolated_segments, fit_line_to_endpoints)
+
+    def test_rejects_malformed_or_nonfinite_segments(self):
+        invalid_inputs = [
+            None,
+            [(0, 1, 2)],
+            [(0, 1, 2, 3, 4)],
+            [(0, 1, "2", 3)],
+            [(0, 1, math.nan, 3)],
+            [(0, 1, math.inf, 3)],
+        ]
+
+        for function in self.FUNCTIONS:
+            for segments in invalid_inputs:
+                with self.subTest(function=function.__name__, segments=segments):
+                    with self.assertRaises(ValueError):
+                        function(segments, 10, 0)
+
+    def test_rejects_invalid_extrapolation_extents(self):
+        invalid_extents = [(0, 10), (5, 5), (math.inf, 0), (10, math.nan)]
+
+        for function in self.FUNCTIONS:
+            for extents in invalid_extents:
+                with self.subTest(function=function.__name__, extents=extents):
+                    with self.assertRaises(ValueError):
+                        function([], *extents)
+
+    def test_rejects_numerically_unsafe_extrapolation(self):
+        segment = [(1e308, 1, -1e308, 2)]
+
+        for function in self.FUNCTIONS:
+            with self.subTest(function=function.__name__):
+                with self.assertRaises(ValueError):
+                    function(segment, 10, 0)
+
+    def test_accepts_single_pass_segment_iterables(self):
+        for function in self.FUNCTIONS:
+            segments = ((0, 0, 10, 10) for _ in range(1))
+            with self.subTest(function=function.__name__):
+                self.assertEqual(function(segments, 10, 0), (10, 10.0, 0, 0.0))
 
 
 if __name__ == "__main__":
