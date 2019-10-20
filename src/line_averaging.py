@@ -1,4 +1,12 @@
-"""Average and extrapolate lane line segments."""
+"""Average and extrapolate lane line segments.
+
+``average_extrapolated_segments`` preserves the notebook algorithm: it gives
+every segment equal influence after extrapolation. ``fit_line_to_endpoints``
+uses ordinary least squares, so long vertical spans contribute more leverage.
+Both approaches run in O(n) time and use O(n) auxiliary space for n segments.
+The segment average is easier to reason about; least squares usually makes
+better use of segments with unequal lengths but is more sensitive to outliers.
+"""
 
 from __future__ import annotations
 
@@ -87,6 +95,9 @@ def average_extrapolated_segments(
     This is the pure-Python equivalent of the notebook's
     ``extrapolate_and_average_lines`` helper. Horizontal segments cannot be
     expressed as ``x = f(y)`` and are ignored.
+
+    Complexity is O(n) time and O(n) auxiliary space. Use this approach when
+    every detected segment should have equal weight regardless of its length.
     """
 
     y_bottom, y_top = _validate_extents(y_bottom, y_top)
@@ -120,6 +131,9 @@ def fit_line_to_endpoints(
 
     Unlike segment-wise extrapolation, ordinary least squares gives more
     influence to endpoints that cover a larger vertical range.
+
+    Complexity is O(n) time and O(n) auxiliary space. Use this approach when
+    segment length is useful evidence and input outliers are already filtered.
     """
 
     y_bottom, y_top = _validate_extents(y_bottom, y_top)
