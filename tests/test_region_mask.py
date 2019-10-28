@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.region_mask import mask_polygon
+from src.region_mask import mask_polygon, mask_polygon_scanline
 
 
 class MaskPolygonTests(unittest.TestCase):
@@ -49,6 +49,40 @@ class MaskPolygonTests(unittest.TestCase):
         mask_polygon(image, [(0, 0), (1, 0), (0, 1)])
 
         self.assertEqual(image, original)
+
+
+class ScanlineMaskPolygonTests(unittest.TestCase):
+    def test_matches_point_testing_for_rectangular_and_triangular_regions(self):
+        image = [[1] * 6 for _ in range(5)]
+        polygons = [
+            [(1, 0), (4, 0), (4, 4), (1, 4)],
+            [(0, 4), (3, 0), (5, 4)],
+        ]
+
+        for polygon in polygons:
+            with self.subTest(polygon=polygon):
+                self.assertEqual(
+                    mask_polygon_scanline(image, polygon),
+                    mask_polygon(image, polygon),
+                )
+
+    def test_matches_point_testing_for_a_concave_region(self):
+        image = [[1] * 7 for _ in range(6)]
+        concave_polygon = [(0, 0), (6, 0), (6, 5), (3, 2), (0, 5)]
+
+        self.assertEqual(
+            mask_polygon_scanline(image, concave_polygon),
+            mask_polygon(image, concave_polygon),
+        )
+
+    def test_preserves_color_pixels_and_blacks_the_exterior(self):
+        image = [[(x, y, 1) for x in range(4)] for y in range(3)]
+        polygon = [(1, 0), (2, 0), (2, 2), (1, 2)]
+
+        self.assertEqual(
+            mask_polygon_scanline(image, polygon),
+            mask_polygon(image, polygon),
+        )
 
 
 if __name__ == "__main__":
