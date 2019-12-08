@@ -3,11 +3,67 @@
 from __future__ import annotations
 
 import math
+from numbers import Real
 from typing import Any, Iterable, Sequence, Tuple
 
 
 Point = Tuple[float, float]
 MaskedImage = Tuple[Tuple[Any, ...], ...]
+
+
+def _normalize_image(image: Iterable[Sequence[Any]]) -> MaskedImage:
+    if image is None or isinstance(image, (str, bytes)):
+        raise ValueError("image must be a non-empty rectangular matrix")
+    try:
+        raw_rows = tuple(image)
+    except TypeError as error:
+        raise ValueError("image must be a non-empty rectangular matrix") from error
+    if not raw_rows:
+        raise ValueError("image must contain at least one row")
+
+    rows = []
+    for raw_row in raw_rows:
+        if isinstance(raw_row, (str, bytes)):
+            raise ValueError("image rows must be pixel sequences")
+        try:
+            row = tuple(raw_row)
+        except TypeError as error:
+            raise ValueError("image rows must be pixel sequences") from error
+        rows.append(row)
+
+    width = len(rows[0])
+    if width == 0 or any(len(row) != width for row in rows):
+        raise ValueError("image rows must have one consistent non-zero width")
+    return tuple(rows)
+
+
+def _normalize_polygon(vertices: Sequence[Point]) -> Tuple[Point, ...]:
+    if vertices is None or isinstance(vertices, (str, bytes)):
+        raise ValueError("vertices must describe a polygon")
+    try:
+        raw_points = tuple(vertices)
+    except TypeError as error:
+        raise ValueError("vertices must describe a polygon") from error
+    if len(raw_points) < 3:
+        raise ValueError("a polygon requires at least three vertices")
+
+    polygon = []
+    for raw_point in raw_points:
+        try:
+            point = tuple(raw_point)
+        except TypeError as error:
+            raise ValueError("each vertex must contain two coordinates") from error
+        if len(point) != 2:
+            raise ValueError("each vertex must contain two coordinates")
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, Real)
+            or not math.isfinite(float(value))
+            for value in point
+        ):
+            raise ValueError("vertex coordinates must be finite real numbers")
+        polygon.append((float(point[0]), float(point[1])))
+    return tuple(polygon)
 
 
 def _point_on_segment(x: float, y: float, start: Point, end: Point) -> bool:
@@ -49,8 +105,8 @@ def mask_polygon(
 ) -> MaskedImage:
     """Keep pixels inside or on ``vertices`` and black out the remainder."""
 
-    rows = tuple(tuple(row) for row in image)
-    polygon = tuple(vertices)
+    rows = _normalize_image(image)
+    polygon = _normalize_polygon(vertices)
     return tuple(
         tuple(
             pixel if _point_in_polygon(x, y, polygon) else _black_pixel(pixel)
@@ -101,8 +157,8 @@ def mask_polygon_scanline(
 ) -> MaskedImage:
     """Mask an image by filling polygon spans one horizontal row at a time."""
 
-    rows = tuple(tuple(row) for row in image)
-    polygon = tuple(vertices)
+    rows = _normalize_image(image)
+    polygon = _normalize_polygon(vertices)
     return tuple(
         tuple(
             pixel if x in inside_columns else _black_pixel(pixel)

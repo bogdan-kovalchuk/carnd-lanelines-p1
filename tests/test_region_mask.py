@@ -1,5 +1,6 @@
 """Characterization tests for polygonal region masking."""
 
+import math
 import unittest
 
 from src.region_mask import mask_polygon, mask_polygon_scanline
@@ -83,6 +84,47 @@ class ScanlineMaskPolygonTests(unittest.TestCase):
             mask_polygon_scanline(image, polygon),
             mask_polygon(image, polygon),
         )
+
+
+class RegionMaskValidationTests(unittest.TestCase):
+    FUNCTIONS = (mask_polygon, mask_polygon_scanline)
+    VALID_IMAGE = [[1, 2], [3, 4]]
+    VALID_POLYGON = [(0, 0), (1, 0), (0, 1)]
+
+    def test_rejects_empty_ragged_and_non_matrix_images(self):
+        invalid_images = [None, [], [[]], [[1], [2, 3]], [1, 2], "image"]
+
+        for function in self.FUNCTIONS:
+            for image in invalid_images:
+                with self.subTest(function=function.__name__, image=image):
+                    with self.assertRaises(ValueError):
+                        function(image, self.VALID_POLYGON)
+
+    def test_rejects_malformed_polygons(self):
+        invalid_polygons = [
+            None,
+            [],
+            [(0, 0), (1, 1)],
+            [(0, 0), (1, 0), (0,)],
+            [(0, 0), (1, 0), (0, "1")],
+            [(0, 0), (1, 0), (0, math.nan)],
+            [(0, 0), (1, 0), (0, math.inf)],
+        ]
+
+        for function in self.FUNCTIONS:
+            for polygon in invalid_polygons:
+                with self.subTest(function=function.__name__, polygon=polygon):
+                    with self.assertRaises(ValueError):
+                        function(self.VALID_IMAGE, polygon)
+
+    def test_accepts_single_pass_image_rows(self):
+        for function in self.FUNCTIONS:
+            image = (row for row in self.VALID_IMAGE)
+            with self.subTest(function=function.__name__):
+                self.assertEqual(
+                    function(image, self.VALID_POLYGON),
+                    ((1, 2), (3, 0)),
+                )
 
 
 if __name__ == "__main__":
