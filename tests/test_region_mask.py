@@ -126,6 +126,42 @@ class RegionMaskValidationTests(unittest.TestCase):
                     ((1, 2), (3, 0)),
                 )
 
+    def test_accepts_a_repeated_closing_vertex(self):
+        closed_polygon = [(0, 0), (1, 0), (0, 1), (0, 0)]
+
+        for function in self.FUNCTIONS:
+            with self.subTest(function=function.__name__):
+                self.assertEqual(
+                    function(self.VALID_IMAGE, closed_polygon),
+                    function(self.VALID_IMAGE, self.VALID_POLYGON),
+                )
+
+    def test_rejects_duplicate_and_collinear_polygons(self):
+        invalid_polygons = [
+            [(0, 0), (0, 0), (1, 1)],
+            [(0, 0), (1, 1), (2, 2)],
+        ]
+
+        for function in self.FUNCTIONS:
+            for polygon in invalid_polygons:
+                with self.subTest(function=function.__name__, polygon=polygon):
+                    with self.assertRaises(ValueError):
+                        function(self.VALID_IMAGE, polygon)
+
+    def test_handles_fractional_and_out_of_frame_boundaries(self):
+        image = [[1] * 4 for _ in range(4)]
+        polygons = [
+            [(0.5, 0.5), (2.5, 0.5), (2.5, 2.5), (0.5, 2.5)],
+            [(-100, -100), (100, -100), (100, 100), (-100, 100)],
+        ]
+
+        for polygon in polygons:
+            with self.subTest(polygon=polygon):
+                self.assertEqual(
+                    mask_polygon_scanline(image, polygon),
+                    mask_polygon(image, polygon),
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

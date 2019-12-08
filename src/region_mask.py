@@ -62,7 +62,27 @@ def _normalize_polygon(vertices: Sequence[Point]) -> Tuple[Point, ...]:
             for value in point
         ):
             raise ValueError("vertex coordinates must be finite real numbers")
-        polygon.append((float(point[0]), float(point[1])))
+        normalized_point = (float(point[0]), float(point[1]))
+        if not polygon or polygon[-1] != normalized_point:
+            polygon.append(normalized_point)
+
+    if len(polygon) > 1 and polygon[0] == polygon[-1]:
+        polygon.pop()
+    if len(polygon) < 3 or len(set(polygon)) < 3:
+        raise ValueError("a polygon requires at least three distinct vertices")
+
+    area_terms = (
+        start[0] * end[1] - end[0] * start[1]
+        for start, end in zip(polygon, polygon[1:] + polygon[:1])
+    )
+    try:
+        doubled_area = math.fsum(area_terms)
+    except (OverflowError, ValueError) as error:
+        raise ValueError("polygon coordinates are too large to process safely") from error
+    if not math.isfinite(doubled_area):
+        raise ValueError("polygon coordinates are too large to process safely")
+    if doubled_area == 0:
+        raise ValueError("polygon vertices must enclose a non-zero area")
     return tuple(polygon)
 
 
@@ -70,7 +90,8 @@ def _point_on_segment(x: float, y: float, start: Point, end: Point) -> bool:
     x1, y1 = start
     x2, y2 = end
     cross_product = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1)
-    if cross_product != 0:
+    scale = max(abs(x - x1), abs(y - y1), abs(x2 - x1), abs(y2 - y1), 1.0)
+    if not math.isclose(cross_product, 0.0, abs_tol=1e-12 * scale * scale):
         return False
     return min(x1, x2) <= x <= max(x1, x2) and min(y1, y2) <= y <= max(y1, y2)
 
@@ -134,8 +155,12 @@ def _scanline_columns(
             boundary_columns.update(range(start, stop + 1))
         elif y1 != y2:
             boundary_x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
-            if min(y1, y2) <= y <= max(y1, y2) and boundary_x.is_integer():
-                column = int(boundary_x)
+            nearest_column = round(boundary_x)
+            if (
+                min(y1, y2) <= y <= max(y1, y2)
+                and math.isclose(boundary_x, nearest_column, abs_tol=1e-12)
+            ):
+                column = int(nearest_column)
                 if 0 <= column < width:
                     boundary_columns.add(column)
             if min(y1, y2) <= y < max(y1, y2):
