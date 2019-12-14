@@ -1,4 +1,12 @@
-"""Apply polygonal regions of interest to small image-like matrices."""
+"""Apply polygonal regions of interest to small image-like matrices.
+
+``mask_polygon`` uses an independent point-in-polygon test for every pixel. It
+is simple and handles arbitrary simple polygons in O(h * w * v) time for image
+height h, width w, and v vertices. ``mask_polygon_scanline`` intersects each
+image row with polygon edges, reducing the bound to O(h * (v log v + w)). Both
+return an immutable O(h * w) image copy and therefore use O(h * w) result
+space. The point method is easiest to audit; scanline filling scales better.
+"""
 
 from __future__ import annotations
 
@@ -124,7 +132,11 @@ def mask_polygon(
     image: Iterable[Sequence[Any]],
     vertices: Sequence[Point],
 ) -> MaskedImage:
-    """Keep pixels inside or on ``vertices`` and black out the remainder."""
+    """Keep pixels inside or on ``vertices`` and black out the remainder.
+
+    Time complexity is O(h * w * v), with O(h * w) result space. Prefer this
+    direct implementation for small fixtures and reference comparisons.
+    """
 
     rows = _normalize_image(image)
     polygon = _normalize_polygon(vertices)
@@ -180,7 +192,11 @@ def mask_polygon_scanline(
     image: Iterable[Sequence[Any]],
     vertices: Sequence[Point],
 ) -> MaskedImage:
-    """Mask an image by filling polygon spans one horizontal row at a time."""
+    """Mask an image by filling polygon spans one horizontal row at a time.
+
+    Time complexity is O(h * (v log v + w)); result space is O(h * w), with
+    O(v + w) transient row state. Prefer this implementation for larger masks.
+    """
 
     rows = _normalize_image(image)
     polygon = _normalize_polygon(vertices)
