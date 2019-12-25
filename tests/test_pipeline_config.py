@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 import math
 import unittest
 
-from src.pipeline_config import PipelineConfig
+from src.pipeline_config import PipelineConfig, parse_pipeline_config
 
 
 class PipelineConfigTests(unittest.TestCase):
@@ -82,6 +82,38 @@ class MappingPipelineConfigTests(unittest.TestCase):
             PipelineConfig.from_mapping(values),
             PipelineConfig(**values),
         )
+
+
+class TextPipelineConfigTests(unittest.TestCase):
+    def test_parses_key_value_lines_and_comments(self):
+        text = """
+        # Compact synthetic frame
+        image_width = 100
+        image_height=60
+        top_shift = 20
+        bottom_shift=5
+        horizontal_shift=10
+        hough_rho=3.5
+        """
+
+        config = parse_pipeline_config(text)
+
+        self.assertEqual(
+            config,
+            PipelineConfig.from_mapping(
+                {
+                    "image_width": 100,
+                    "image_height": 60,
+                    "top_shift": 20,
+                    "bottom_shift": 5,
+                    "horizontal_shift": 10,
+                    "hough_rho": 3.5,
+                }
+            ),
+        )
+
+    def test_empty_text_uses_all_defaults(self):
+        self.assertEqual(parse_pipeline_config("\n# defaults\n"), PipelineConfig())
 
 
 if __name__ == "__main__":

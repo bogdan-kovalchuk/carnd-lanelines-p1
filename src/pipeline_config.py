@@ -82,3 +82,18 @@ class PipelineConfig:
 
         vertices = self.roi_vertices()
         return vertices[0][1], vertices[1][1]
+
+
+def parse_pipeline_config(text: str) -> PipelineConfig:
+    """Parse newline-delimited ``name=value`` configuration text."""
+
+    values = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, separator, value = line.partition("=")
+        if not separator:
+            raise ValueError("configuration lines must use name=value syntax")
+        values[key.strip()] = value.strip()
+    return PipelineConfig.from_mapping(values)
