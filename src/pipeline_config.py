@@ -4,10 +4,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Tuple
+from typing import Mapping, Tuple
 
 
 Point = Tuple[float, float]
+
+_INTEGER_FIELDS = {
+    "image_width",
+    "image_height",
+    "kernel_size",
+    "canny_low_threshold",
+    "canny_high_threshold",
+    "top_shift",
+    "bottom_shift",
+    "horizontal_shift",
+    "hough_threshold",
+    "min_line_length",
+    "max_line_gap",
+}
+_FLOAT_FIELDS = {
+    "hough_rho",
+    "hough_theta",
+    "min_segment_angle",
+    "max_segment_angle",
+}
 
 
 @dataclass(frozen=True)
@@ -29,6 +49,20 @@ class PipelineConfig:
     max_line_gap: int = 20
     min_segment_angle: float = 20.0
     max_segment_angle: float = 80.0
+
+    @classmethod
+    def from_mapping(cls, values: Mapping[str, object]) -> "PipelineConfig":
+        """Build a configuration from typed values or numeric strings."""
+
+        converted = {}
+        for key, value in values.items():
+            if key in _INTEGER_FIELDS:
+                converted[key] = int(value)
+            elif key in _FLOAT_FIELDS:
+                converted[key] = float(value)
+            else:
+                converted[key] = value
+        return cls(**converted)
 
     def roi_vertices(self) -> Tuple[Point, Point, Point, Point]:
         """Return the notebook's trapezoidal region of interest."""

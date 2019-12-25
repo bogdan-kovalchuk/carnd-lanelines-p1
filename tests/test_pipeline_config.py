@@ -52,5 +52,37 @@ class PipelineConfigTests(unittest.TestCase):
             config.kernel_size = 7
 
 
+class MappingPipelineConfigTests(unittest.TestCase):
+    def test_empty_mapping_matches_default_constructor(self):
+        self.assertEqual(PipelineConfig.from_mapping({}), PipelineConfig())
+
+    def test_coerces_numeric_strings_by_configuration_schema(self):
+        config = PipelineConfig.from_mapping(
+            {
+                "image_width": "100",
+                "image_height": "60",
+                "top_shift": "20",
+                "bottom_shift": "5",
+                "horizontal_shift": "10",
+                "hough_rho": "3.5",
+            }
+        )
+
+        self.assertEqual(config.image_width, 100)
+        self.assertEqual(config.hough_rho, 3.5)
+        self.assertEqual(
+            config.roi_vertices(),
+            ((0.0, 55.0), (40.0, 40.0), (60.0, 40.0), (100.0, 55.0)),
+        )
+
+    def test_matches_direct_construction_for_typed_values(self):
+        values = {"kernel_size": 7, "canny_low_threshold": 40}
+
+        self.assertEqual(
+            PipelineConfig.from_mapping(values),
+            PipelineConfig(**values),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
