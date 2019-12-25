@@ -97,3 +97,17 @@ def parse_pipeline_config(text: str) -> PipelineConfig:
             raise ValueError("configuration lines must use name=value syntax")
         values[key.strip()] = value.strip()
     return PipelineConfig.from_mapping(values)
+
+
+def pipeline_config_from_environment(
+    environment: Mapping[str, str],
+    prefix: str = "LANE_",
+) -> PipelineConfig:
+    """Build a configuration from prefixed environment-style variables."""
+
+    values = {
+        key[len(prefix):].lower(): value
+        for key, value in environment.items()
+        if key.startswith(prefix)
+    }
+    return PipelineConfig.from_mapping(values)

@@ -4,7 +4,11 @@ from dataclasses import FrozenInstanceError
 import math
 import unittest
 
-from src.pipeline_config import PipelineConfig, parse_pipeline_config
+from src.pipeline_config import (
+    PipelineConfig,
+    parse_pipeline_config,
+    pipeline_config_from_environment,
+)
 
 
 class PipelineConfigTests(unittest.TestCase):
@@ -114,6 +118,41 @@ class TextPipelineConfigTests(unittest.TestCase):
 
     def test_empty_text_uses_all_defaults(self):
         self.assertEqual(parse_pipeline_config("\n# defaults\n"), PipelineConfig())
+
+
+class EnvironmentPipelineConfigTests(unittest.TestCase):
+    def test_reads_prefixed_variables_and_ignores_unrelated_entries(self):
+        environment = {
+            "LANE_IMAGE_WIDTH": "100",
+            "LANE_IMAGE_HEIGHT": "60",
+            "LANE_TOP_SHIFT": "20",
+            "LANE_BOTTOM_SHIFT": "5",
+            "LANE_HORIZONTAL_SHIFT": "10",
+            "PATH": "ignored",
+        }
+
+        config = pipeline_config_from_environment(environment)
+
+        self.assertEqual(
+            config,
+            PipelineConfig.from_mapping(
+                {
+                    "image_width": 100,
+                    "image_height": 60,
+                    "top_shift": 20,
+                    "bottom_shift": 5,
+                    "horizontal_shift": 10,
+                }
+            ),
+        )
+
+    def test_supports_a_custom_prefix(self):
+        environment = {"PIPE_KERNEL_SIZE": "7", "LANE_KERNEL_SIZE": "9"}
+
+        self.assertEqual(
+            pipeline_config_from_environment(environment, prefix="PIPE_"),
+            PipelineConfig(kernel_size=7),
+        )
 
 
 if __name__ == "__main__":
