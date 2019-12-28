@@ -155,5 +155,57 @@ class EnvironmentPipelineConfigTests(unittest.TestCase):
         )
 
 
+class PipelineConfigValidationTests(unittest.TestCase):
+    def test_rejects_invalid_integer_and_threshold_settings(self):
+        invalid_overrides = [
+            {"image_width": 0},
+            {"image_height": -1},
+            {"kernel_size": 0},
+            {"kernel_size": 4},
+            {"kernel_size": True},
+            {"canny_low_threshold": -1},
+            {"canny_low_threshold": 150},
+            {"canny_high_threshold": 256},
+            {"hough_threshold": 0},
+            {"min_line_length": -1},
+            {"max_line_gap": -1},
+        ]
+
+        for overrides in invalid_overrides:
+            with self.subTest(overrides=overrides):
+                with self.assertRaises(ValueError):
+                    PipelineConfig(**overrides)
+
+    def test_rejects_invalid_region_geometry(self):
+        invalid_overrides = [
+            {"bottom_shift": -1},
+            {"bottom_shift": 210},
+            {"top_shift": 0},
+            {"top_shift": 541},
+            {"horizontal_shift": -1},
+            {"horizontal_shift": 481},
+        ]
+
+        for overrides in invalid_overrides:
+            with self.subTest(overrides=overrides):
+                with self.assertRaises(ValueError):
+                    PipelineConfig(**overrides)
+
+    def test_rejects_nonfinite_and_invalid_float_settings(self):
+        invalid_overrides = [
+            {"hough_rho": 0},
+            {"hough_theta": math.inf},
+            {"min_segment_angle": math.nan},
+            {"min_segment_angle": 80, "max_segment_angle": 20},
+            {"max_segment_angle": 91},
+            {"hough_rho": True},
+        ]
+
+        for overrides in invalid_overrides:
+            with self.subTest(overrides=overrides):
+                with self.assertRaises(ValueError):
+                    PipelineConfig(**overrides)
+
+
 if __name__ == "__main__":
     unittest.main()

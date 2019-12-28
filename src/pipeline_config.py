@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+from numbers import Real
 from typing import Mapping, Tuple
 
 
@@ -49,6 +50,46 @@ class PipelineConfig:
     max_line_gap: int = 20
     min_segment_angle: float = 20.0
     max_segment_angle: float = 80.0
+
+    def __post_init__(self) -> None:
+        integer_fields = {
+            name: getattr(self, name)
+            for name in _INTEGER_FIELDS
+        }
+        if any(type(value) is not int for value in integer_fields.values()):
+            raise ValueError("integer configuration fields must contain integers")
+        if self.image_width <= 0 or self.image_height <= 0:
+            raise ValueError("image dimensions must be positive")
+        if self.kernel_size <= 0 or self.kernel_size % 2 == 0:
+            raise ValueError("kernel_size must be a positive odd integer")
+        if not 0 <= self.canny_low_threshold < self.canny_high_threshold <= 255:
+            raise ValueError("Canny thresholds must satisfy 0 <= low < high <= 255")
+        if not 0 <= self.bottom_shift < self.top_shift <= self.image_height:
+            raise ValueError("ROI shifts must satisfy 0 <= bottom < top <= image height")
+        if not 0 <= self.horizontal_shift <= self.image_width / 2:
+            raise ValueError("horizontal_shift must fit within half the image width")
+        if self.hough_threshold <= 0:
+            raise ValueError("hough_threshold must be positive")
+        if self.min_line_length < 0 or self.max_line_gap < 0:
+            raise ValueError("line length and gap settings cannot be negative")
+
+        real_fields = {
+            "hough_rho": self.hough_rho,
+            "hough_theta": self.hough_theta,
+            "min_segment_angle": self.min_segment_angle,
+            "max_segment_angle": self.max_segment_angle,
+        }
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, Real)
+            or not math.isfinite(float(value))
+            for value in real_fields.values()
+        ):
+            raise ValueError("floating-point configuration fields must be finite numbers")
+        if self.hough_rho <= 0 or self.hough_theta <= 0:
+            raise ValueError("Hough resolutions must be positive")
+        if not 0 <= self.min_segment_angle < self.max_segment_angle <= 90:
+            raise ValueError("segment angles must satisfy 0 <= min < max <= 90")
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, object]) -> "PipelineConfig":
