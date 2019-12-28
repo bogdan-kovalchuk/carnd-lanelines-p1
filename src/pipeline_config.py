@@ -29,6 +29,7 @@ _FLOAT_FIELDS = {
     "min_segment_angle",
     "max_segment_angle",
 }
+_CONFIG_FIELDS = _INTEGER_FIELDS | _FLOAT_FIELDS
 
 
 @dataclass(frozen=True)
@@ -95,14 +96,31 @@ class PipelineConfig:
     def from_mapping(cls, values: Mapping[str, object]) -> "PipelineConfig":
         """Build a configuration from typed values or numeric strings."""
 
+        if not isinstance(values, Mapping):
+            raise ValueError("configuration values must be a mapping")
         converted = {}
         for key, value in values.items():
+            if not isinstance(key, str) or key not in _CONFIG_FIELDS:
+                raise ValueError(f"unknown configuration field: {key!r}")
+            if isinstance(value, bool):
+                raise ValueError(f"configuration field {key!r} cannot be boolean")
             if key in _INTEGER_FIELDS:
-                converted[key] = int(value)
-            elif key in _FLOAT_FIELDS:
-                converted[key] = float(value)
+                if (
+                    isinstance(value, Real)
+                    and not isinstance(value, int)
+                    and (
+                        not math.isfinite(float(value))
+                        or not float(value).is_integer()
+                    )
+                ):
+                    raise ValueError(f"configuration field {key!r} must be an integer")
+                converter = int
             else:
-                converted[key] = value
+                converter = float
+            try:
+                converted[key] = converter(value)
+            except (TypeError, ValueError, OverflowError) as error:
+                raise ValueError(f"invalid value for configuration field {key!r}") from error
         return cls(**converted)
 
     def roi_vertices(self) -> Tuple[Point, Point, Point, Point]:
@@ -128,15 +146,21 @@ class PipelineConfig:
 def parse_pipeline_config(text: str) -> PipelineConfig:
     """Parse newline-delimited ``name=value`` configuration text."""
 
+    if not isinstance(text, str):
+        raise ValueError("configuration text must be a string")
     values = {}
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
             continue
-        key, separator, value = line.partition("=")
-        if not separator:
-            raise ValueError("configuration lines must use name=value syntax")
-        values[key.strip()] = value.strip()
+        if line.count("=") != 1:
+            raise ValueError(f"line {line_number} must use name=value syntax")
+        key, value = (part.strip() for part in line.split("=", 1))
+        if not key or not value:
+            raise ValueError(f"line {line_number} requires a name and value")
+        if key in values:
+            raise ValueError(f"duplicate configuration field on line {line_number}: {key}")
+        values[key] = value
     return PipelineConfig.from_mapping(values)
 
 
@@ -146,9 +170,19 @@ def pipeline_config_from_environment(
 ) -> PipelineConfig:
     """Build a configuration from prefixed environment-style variables."""
 
-    values = {
-        key[len(prefix):].lower(): value
-        for key, value in environment.items()
-        if key.startswith(prefix)
-    }
+    if not isinstance(environment, Mapping):
+        raise ValueError("environment must be a mapping")
+    if not isinstance(prefix, str) or not prefix:
+        raise ValueError("environment prefix must be a non-empty string")
+
+    values = {}
+    for key, value in environment.items():
+        if not isinstance(key, str):
+            raise ValueError("environment variable names must be strings")
+        if not key.startswith(prefix):
+            continue
+        field_name = key[len(prefix):].lower()
+        if field_name in values:
+            raise ValueError(f"duplicate environment field: {field_name}")
+        values[field_name] = value
     return PipelineConfig.from_mapping(values)

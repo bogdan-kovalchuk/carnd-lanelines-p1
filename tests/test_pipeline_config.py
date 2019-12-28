@@ -207,5 +207,58 @@ class PipelineConfigValidationTests(unittest.TestCase):
                     PipelineConfig(**overrides)
 
 
+class PipelineConfigParsingValidationTests(unittest.TestCase):
+    def test_mapping_rejects_unknown_and_lossy_values(self):
+        invalid_mappings = [
+            None,
+            {"unknown": 1},
+            {"kernel_size": True},
+            {"kernel_size": 5.5},
+            {"kernel_size": math.inf},
+            {"kernel_size": "five"},
+            {1: 5},
+        ]
+
+        for values in invalid_mappings:
+            with self.subTest(values=values):
+                with self.assertRaises(ValueError):
+                    PipelineConfig.from_mapping(values)
+
+    def test_text_parser_rejects_malformed_and_duplicate_lines(self):
+        invalid_texts = [
+            None,
+            "kernel_size",
+            "=5",
+            "kernel_size=",
+            "kernel_size=5=7",
+            "kernel_size=5\nkernel_size=7",
+        ]
+
+        for text in invalid_texts:
+            with self.subTest(text=text):
+                with self.assertRaises(ValueError):
+                    parse_pipeline_config(text)
+
+    def test_text_parser_supports_inline_comments(self):
+        self.assertEqual(
+            parse_pipeline_config("kernel_size = 7 # pixels"),
+            PipelineConfig(kernel_size=7),
+        )
+
+    def test_environment_parser_rejects_invalid_sources_and_collisions(self):
+        invalid_cases = [
+            (None, "LANE_"),
+            ({"LANE_KERNEL_SIZE": "5"}, ""),
+            ({1: "5"}, "LANE_"),
+            ({"LANE_UNKNOWN": "5"}, "LANE_"),
+            ({"LANE_KERNEL_SIZE": "5", "LANE_kernel_size": "7"}, "LANE_"),
+        ]
+
+        for environment, prefix in invalid_cases:
+            with self.subTest(environment=environment, prefix=prefix):
+                with self.assertRaises(ValueError):
+                    pipeline_config_from_environment(environment, prefix)
+
+
 if __name__ == "__main__":
     unittest.main()
