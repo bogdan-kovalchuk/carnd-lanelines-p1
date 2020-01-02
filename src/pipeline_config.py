@@ -1,4 +1,12 @@
-"""Typed configuration values for the lane-detection notebook pipeline."""
+"""Typed configuration values for the lane-detection notebook pipeline.
+
+Direct ``PipelineConfig`` construction is constant time because the schema has
+a fixed number of fields. ``from_mapping`` is O(k) for k overrides and is the
+best adapter for already structured data. ``parse_pipeline_config`` is O(c)
+for c input characters and suits small human-edited files. Environment loading
+is O(e) for e variables and keeps deployment overrides outside source files.
+All approaches use O(k) temporary space and converge on the same validation.
+"""
 
 from __future__ import annotations
 
@@ -34,7 +42,11 @@ _CONFIG_FIELDS = _INTEGER_FIELDS | _FLOAT_FIELDS
 
 @dataclass(frozen=True)
 class PipelineConfig:
-    """Immutable parameters corresponding to the notebook constants."""
+    """Immutable parameters corresponding to the notebook constants.
+
+    Construction and validation are O(1) because the field set is fixed.
+    Prefer direct construction for typed values known at development time.
+    """
 
     image_width: int = 960
     image_height: int = 540
@@ -94,7 +106,10 @@ class PipelineConfig:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, object]) -> "PipelineConfig":
-        """Build a configuration from typed values or numeric strings."""
+        """Build a configuration from typed values or numeric strings.
+
+        Conversion takes O(k) time and O(k) temporary space for k overrides.
+        """
 
         if not isinstance(values, Mapping):
             raise ValueError("configuration values must be a mapping")
@@ -144,7 +159,10 @@ class PipelineConfig:
 
 
 def parse_pipeline_config(text: str) -> PipelineConfig:
-    """Parse newline-delimited ``name=value`` configuration text."""
+    """Parse newline-delimited ``name=value`` configuration text.
+
+    Parsing takes O(c) time for c characters and O(k) override space.
+    """
 
     if not isinstance(text, str):
         raise ValueError("configuration text must be a string")
@@ -168,7 +186,10 @@ def pipeline_config_from_environment(
     environment: Mapping[str, str],
     prefix: str = "LANE_",
 ) -> PipelineConfig:
-    """Build a configuration from prefixed environment-style variables."""
+    """Build a configuration from prefixed environment-style variables.
+
+    Scanning takes O(e) time for e environment entries and O(k) override space.
+    """
 
     if not isinstance(environment, Mapping):
         raise ValueError("environment must be a mapping")
